@@ -1,11 +1,13 @@
-package vbb.master;
+package dbaclient;
 
-import vbb.master.AbstractAggregateTransformer;
 import java.io.File;
+import java.io.ObjectOutputStream;
 import java.lang.reflect.Constructor;
 import java.net.MalformedURLException;
+import java.net.Socket;
 import java.net.URL;
 import java.net.URLClassLoader;
+import dbaclient.AbstractAggregateTransformer;
 
 public class Main {
 
@@ -34,10 +36,16 @@ public class Main {
             @SuppressWarnings("unchecked") // Just for this one statement
             Constructor cons = c.getConstructor(String.class, String.class, String.class);
             // Instantiate transformer class but cast it to its parent AbstractAggregateTransformer
-            AbstractAggregateTransformer tran = (AbstractAggregateTransformer) cons.newInstance( args[1], args[2], args[3]);
+            AbstractAggregateTransformer tran = (AbstractAggregateTransformer) cons.newInstance(args[1], args[2], args[3]);
             // Next, we serialize the object and send it over the network to each DBUpgradinator client in the cluster
+            // TODO: Make class serializable.
             // TODO: Load Voldemort Stores config dynamically to get sockets, IPs and URL destinations
-            // TODO: GIT INIT!!
+
+            // TODO: Make class serializable + load config files.
+            Socket s = new Socket("yourhostname.co.uk", 12345);
+            ObjectOutputStream out = new ObjectOutputStream(s.getOutputStream());
+            out.writeObject(tran);
+            out.flush();
         } catch (MalformedURLException e) {
             System.err.println(e.getMessage());
         } catch (ClassNotFoundException e) {

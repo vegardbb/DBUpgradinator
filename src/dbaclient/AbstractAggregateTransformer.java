@@ -1,11 +1,10 @@
-// FIXME: Edit package descriptor
 package dbaclient;
 
 import java.io.*;
 
 // The abstract superclassclass also used known in DBUpgradinator. All AggregateTransformers implemented must extend this abstract class
-public abstract class AbstractAggregateTransformer implements Serializable {
-    // State variables - initialised in constructor - used to identify 
+abstract class AbstractAggregateTransformer implements Serializable {
+    // State variables - initialised in constructor - used to identify update sequence
     private String previousAppVersion;
     private String currentAppVersion;
     private String nextAppVersion;
@@ -28,7 +27,7 @@ public abstract class AbstractAggregateTransformer implements Serializable {
         return currentAppVersion;
     }
 
-    private Boolean checkAggregateKeyVersion(String key) {
+    public Boolean checkAggregateKeyVersion(String key) {
         // Split string into a collection of substrings and check if the collection of strings is exactly of length 2
         String[] col = key.split(":");
         if (col.length != 2) { return false; }
@@ -43,32 +42,28 @@ public abstract class AbstractAggregateTransformer implements Serializable {
     */
     public abstract void TransformAggregate(String key, Object val);
 
-
-    /**
+    /*
      * This is the default implementation of writeObject.
      * Customise if necessary.
-     */
-    private void writeObject(
+    public void writeObject(
             ObjectOutputStream aOutputStream
     ) throws IOException {
         //perform the default serialization for all non-transient, non-static fields
         aOutputStream.defaultWriteObject();
     }
-    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {}
-
-    private void readObjectNoData() throws ObjectStreamException {}
- 
-    /*
-    public void setnextAppVersion(String nextAppVersion) {
-        this.nextAppVersion = nextAppVersion;
+    private void readObject(
+            ObjectInputStream aInputStream
+    ) throws ClassNotFoundException, IOException {
+        // always perform the default de-serialization first
+        aInputStream.defaultReadObject();
+        // make defensive copy of the mutable Date field
+        // fDateOpened = new Date(fDateOpened.getTime());
+        // ensure that object state has not been corrupted or tampered with maliciously
+        // this.validateState();
     }
 
-    public void setpreviousAppVersion(String previousAppVersion) {
-        this.previousAppVersion = previousAppVersion;
+    private void readObjectNoData() throws InvalidObjectException {
+        throw new InvalidObjectException("Stream data required");
     }
-
-    public void setcurrentAppVersion(String currentAppVersion) {
-        this.currentAppVersion = currentAppVersion;
-    }
-    */
+     */
 }

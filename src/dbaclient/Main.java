@@ -3,17 +3,18 @@ package dbaclient;
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.lang.reflect.Constructor;
 import java.net.MalformedURLException;
 import java.net.Socket;
-import java.net.URL;
-import java.net.URLClassLoader;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.DocumentBuilder;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Node;
 import org.w3c.dom.Element;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 
 // Class reserved for this file
@@ -74,38 +75,32 @@ public class Main {
     // 5: Absolute path to conf.xml
     public static void main(String[] args) {
         String fileName = args[0];
-        // String[] constructorParams = new String[] { args[1], args[2], args[3] };
-        String className = args[4];
-        File file = new File(fileName);
+        String[] array = new String[] { args[1], args[2], args[3] };
+        String className = args[4]; // not relevant?
 
         try {
-            // Convert File to a URL
-            URL url = file.toURI().toURL();
-            URL[] addresses = new URL[] {url};
-            // Create a new class loader with the directory
-            ClassLoader cl = new URLClassLoader(addresses);
-            // Load in the class; MyClass.class should be located in
-            // the directory file:/c:/myclasses/com/mycompany
-            Class c = cl.loadClass(className);
-            @SuppressWarnings("unchecked") // Just for this one statement
-            Constructor cons = c.getConstructor(String.class, String.class, String.class);
-            // Instantiate transformer class but cast it to its parent AbstractAggregateTransformer
-            AbstractAggregateTransformer tran = (AbstractAggregateTransformer) cons.newInstance(args[1], args[2], args[3]);
+            Path path = Paths.get(fileName);
+            byte[] data = Files.readAllBytes(path);
+
             // Next, we serialize the object and send it over the network to each deatheater in the cluster
             ArrayList<AppNode> listOfServers = getConfig(args[5]);
             for (int r = 0; r < listOfServers.toArray().length; r++) {
                 AppNode node = listOfServers.get(r);
                 try {
                     ObjectOutputStream out = new ObjectOutputStream(new Socket(node.getAddress(), node.getPort()).getOutputStream());
-                    out.writeObject(tran);
+                    // On the server side, remember to read each object in the same order as they were written
+                    out.writeObject(data); // byte[]
                     out.flush();
+                    out.writeObject(array); // String[]
+                    out.writeObject(className); // String
+                    out.close();
                 } catch (IOException io) {
                     System.err.println(io.getMessage());
                 }
             }
         } catch (MalformedURLException e) {
             System.err.println(e.getMessage());
-        } catch (ClassNotFoundException e) {
+        } catch (IOException e) {
             System.err.println(e.getMessage());
             System.err.println(e.toString());
         } catch (Exception ex) {
@@ -114,11 +109,3 @@ public class Main {
         }
     }
 }
-
-/*
-* Problems
-* 1) Load a class from compiled class file and instantiate it
-*
-* In UpgraderClient: Abstract prototype of class
-*
-*/

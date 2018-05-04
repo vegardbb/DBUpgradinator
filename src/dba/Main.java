@@ -36,7 +36,7 @@ class AppNode {
 }
 
 public class Main {
-    private static ArrayList<AppNode> getConfig(String filepath) {
+    private static AppNode[] getConfig(String filepath) {
         // Define lists of strings to keep 1) host names and 2) ports
         ArrayList<AppNode> hosts = new ArrayList<>();
         try {
@@ -62,7 +62,7 @@ public class Main {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return hosts;
+        return hosts.toArray();
     }
 
     // Server side: Upgrade starts upon receiving new transformer class, does not end
@@ -83,9 +83,9 @@ public class Main {
             byte[] data = Files.readAllBytes(path);
 
             // Next, we serialize the object and send it over the network to each deatheater in the cluster
-            ArrayList<AppNode> listOfServers = getConfig(args[5]);
-            for (int r = 0; r < listOfServers.toArray().length; r++) {
-                AppNode node = listOfServers.get(r);
+            AppNode[] listOfServers = getConfig(args[5]);
+            for (int r = 0; r < listOfServers.length; r++) {
+                AppNode node = listOfServers[r];
                 try {
                     ObjectOutputStream out = new ObjectOutputStream(new Socket(node.getAddress(), node.getPort()).getOutputStream());
                     // On the server side, remember to read each object in the same order as they were written

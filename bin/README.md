@@ -15,7 +15,7 @@ Tanker om programmeringen og modelleringen rundt masteroppgaven
 * `package voldemort.dbupgradinator`
   * AbstractAggregateTransformer - en abstrakt klasse med en tilstandsvariabel som indikerer applikasjonsversjonen oppgraderingsklassen opererer på og en som indikerer nøkkelverdien til den neste applikasjonen som den transformerte verdien gjelder for; klassen har én abstrakt metoder, som implementeres i subklassen programmert og kompilert til `.class`-fil av den individuelle applikasjonsprogrammerer. Metodens navn er `TransformAggregate`, som påkalles når en forespørsel fra webapplikasjonens gamle versjon (som er under rullerende oppgradering) tilsendes databaseklienten, den påkalles både når klienten mottar data fra datalageret, etter at en `InconsistencyResolver` har flettet divergerende elementer; argumenter: key (fra DB), value (deserialisert), så vel som når klienten mottar data fra applikasjonen, altså fra forespørselen direkte
   * AppVersionResolver - hjelperklasse som kopler dataobjektets nøkkel i en innkommende HTTP-spørring (k) med applikasjonsversjonens nøkkel (x) på formen `k + ":" + x`
-  * AggregateTransformerReceiver - frittstående prosess som ikke er del av en spørrings livsløp, men som både mottar AggregateTransformer-objekter og holder rede på dem i versjonsrekkefølge i en privat liste. Har også ansvar for å påkalle transformasjonsmetoden til hvert objekt.
+  * AggregateTransformerReceiver - frittstående prosess som ikke er del av en HTTP-spørrings livsløp, men som både mottar AggregateTransformer-objekter og holder rede på dem i versjonsrekkefølge i en privat liste. Har også ansvar for å påkalle transformasjonsmetoden til hvert objekt.
 
 * `package voldemort.client`
   * DBUpgradinatorStoreClient - Separat databaseklient som importerer de nye klassene fra DBUpgradinator - pakken
@@ -36,8 +36,13 @@ Alternativt kan man benytte RMI - Remote Method Invocation, det vil si at hver e
  * Partisjon på hver instans: 25 GB; Replikert datavolum på hver instans: 50 GB; Volum per maskin: *75 GB*
  * Gjenværende volum reservert OS og hurtigminne: 80 GB (SSD-plass per droplet) - 75 GB = 5 GB
  * 1000 KB = 1 GB
- * Antakelse: Hvert aggregat i datamodell opptar i snitt 1 KB lagringsplass
+ * Antakelse: Hvert aggregat i datamodell opptar i maksimalt 1 KB lagringsplass
 
-## Trivia (Harry Potter-tema):
- * Brukernavn for UNIX-brukere på hver av dropletene: avery, black, crabbe, dolohov
- * IDer for lagringstjenere: riddle-diary, slytherin-locket, rawenclaw-diadem, nagini
+## Trivia (Harry Potter-tema)
+
+| Droplet | ID, apptjener | ID, DB-klient | ID, DB-tjener    |
+|---------|---------------|---------------|------------------|
+| LON1    | a             | avery         | riddle-diary     |
+| AMS1    | b             | black         | slytherin-locket |
+| AMS2    | c             | crabbe        | rawenclaw-diadem |
+| FRA1    | d             | dolohov       | nagini           |

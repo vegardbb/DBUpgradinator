@@ -1,14 +1,20 @@
-package dbaclient;
+package migrator;
 
-import java.io.*;
+import java.io.Serializable;
 
-// The abstract superclassclass also used known in DBUpgradinator. All AggregateTransformers implemented must extend this abstract class
+// The abstract superclass also used known in DBUpgradinator. All AggregateTransformers implemented must extend this abstract class
 @SuppressWarnings("unused") // Just for this one statement
 public abstract class AbstractAggregateTransformer implements Serializable {
     // State variables - initialised in constructor - used to identify update sequence
     private String previousAppVersion;
     private String currentAppVersion;
     private String nextAppVersion;
+
+    public AbstractAggregateTransformer(String[] strings) {
+        this.previousAppVersion = strings[0];
+        this.currentAppVersion = strings[1];
+        this.nextAppVersion = strings[2];
+    }
 
     public AbstractAggregateTransformer(String previousAppVersion, String currentAppVersion, String nextAppVersion) {
         this.previousAppVersion = previousAppVersion;
@@ -24,7 +30,7 @@ public abstract class AbstractAggregateTransformer implements Serializable {
         return previousAppVersion;
     }
 
-    public String getcurrentAppVersion() {
+    public String getAppVersion() {
         return currentAppVersion;
     }
 

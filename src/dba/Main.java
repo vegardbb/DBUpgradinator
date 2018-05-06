@@ -1,4 +1,4 @@
-package dbaclient;
+package dba;
 
 import java.io.File;
 import java.io.IOException;
@@ -62,7 +62,7 @@ public class Main {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return hosts.toArray();
+        return hosts.toArray(new AppNode[hosts.size()]);
     }
 
     // Server side: Upgrade starts upon receiving new transformer class, does not end
@@ -84,15 +84,14 @@ public class Main {
 
             // Next, we serialize the object and send it over the network to each deatheater in the cluster
             AppNode[] listOfServers = getConfig(args[5]);
-            for (int r = 0; r < listOfServers.length; r++) {
-                AppNode node = listOfServers[r];
+            for (AppNode node : listOfServers) {
                 try {
                     ObjectOutputStream out = new ObjectOutputStream(new Socket(node.getAddress(), node.getPort()).getOutputStream());
                     // On the server side, remember to read each object in the same order as they were written
-                    out.writeObject(data); // byte[]
+                    out.writeObject(data);
                     out.flush();
-                    out.writeObject(array); // String[]
-                    out.writeObject(className); // String
+                    out.writeObject(array);
+                    out.writeObject(className);
                     out.close();
                 } catch (IOException io) {
                     System.err.println(io.getMessage());

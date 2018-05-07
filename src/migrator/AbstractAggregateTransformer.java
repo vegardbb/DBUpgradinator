@@ -10,12 +10,6 @@ public abstract class AbstractAggregateTransformer implements Serializable {
     private String currentAppVersion;
     private String nextAppVersion;
 
-    public AbstractAggregateTransformer(String[] strings) {
-        this.previousAppVersion = strings[0];
-        this.currentAppVersion = strings[1];
-        this.nextAppVersion = strings[2];
-    }
-
     public AbstractAggregateTransformer(String previousAppVersion, String currentAppVersion, String nextAppVersion) {
         this.previousAppVersion = previousAppVersion;
         this.currentAppVersion = currentAppVersion;

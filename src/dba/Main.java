@@ -3,7 +3,6 @@ package dba;
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
-import java.net.MalformedURLException;
 import java.net.Socket;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.DocumentBuilder;
@@ -11,6 +10,8 @@ import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.Node;
 import org.w3c.dom.Element;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,6 +27,7 @@ class AppNode {
         this.port = first;
         this.hostAddress = second;
     }
+
     public int getPort() {
         return port;
     }
@@ -36,6 +38,7 @@ class AppNode {
 }
 
 public class Main {
+    private static final Logger logger = LogManager.getLogger("DBUpgradinator-client");
     private static AppNode[] getConfig(String filepath) {
         // Define lists of strings to keep 1) host names and 2) ports
         ArrayList<AppNode> hosts = new ArrayList<>();
@@ -60,7 +63,7 @@ public class Main {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Config Failure!", e);
         }
         return hosts.toArray(new AppNode[hosts.size()]);
     }
@@ -76,13 +79,12 @@ public class Main {
     public static void main(String[] args) {
         String fileName = args[0];
         String[] array = new String[] { args[1], args[2], args[3] };
-        String className = args[4]; // not relevant?
+        String className = args[4];
 
         try {
             Path path = Paths.get(fileName);
             byte[] data = Files.readAllBytes(path);
 
-            // Next, we serialize the object and send it over the network to each deatheater in the cluster
             AppNode[] listOfServers = getConfig(args[5]);
             for (AppNode node : listOfServers) {
                 try {
@@ -94,17 +96,11 @@ public class Main {
                     out.writeObject(className);
                     out.close();
                 } catch (IOException io) {
-                    System.err.println(io.getMessage());
+                    logger.error("I/O Failure!", io);
                 }
             }
-        } catch (MalformedURLException e) {
-            System.err.println(e.getMessage());
-        } catch (IOException e) {
-            System.err.println(e.getMessage());
-            System.err.println(e.toString());
         } catch (Exception ex) {
-            // Catch-all block
-            ex.printStackTrace();
+            logger.error("Client Failure!", ex);
         }
     }
 }

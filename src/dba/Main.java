@@ -76,6 +76,10 @@ public class Main {
     // 3: Full name for the AggregateTransformerClass extending AbstractAggregateTransformer, used in loadClass
     // 4: Absolute path to conf.xml
     public static void main(String[] args) {
+        if (args.length != 5) {
+            logger.warn("You did not specify enough arguments!");
+            System.exit(1);
+        }
         String fileName = args[0];
         String[] array = new String[] { args[1], args[2] };
         String className = args[3];

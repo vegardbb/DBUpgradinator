@@ -1,23 +1,24 @@
 package migrator;
 
-import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.lang.reflect.Constructor;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
+import java.util.concurrent.CompletableFuture;
 
-// TODO: En indre klasse som implementerer Runnable-grensesnittet og som kjører som en egen tråd.
-// Sitat Jenkov.com: "Inner classes are associated with an instance of the enclosing class. Thus, you must first create an instance of the enclosing class to create an instance of an inner class."
+// Quote Jenkov.com: "Inner classes are associated with an instance of the enclosing class.
+// Thus, you must first create an instance of the enclosing class to create an instance of an inner class."
+
+@SuppressWarnings("unused")
 public class Migrator {
     private final int port;
-    private String lastSchemaVersion = ""; // Skal kunne redigeres
     private final HashMap<String, AbstractAggregateTransformer> transformers = new HashMap<>(8, (float) 0.95);
 
     public Migrator(final int port) {
         this.port = port;
         // Sets up separate process which listens actively on the server socket
-        new Thread( this::aggregateTransformerReceiver ).start(); // make this a state variable?
+        new Thread( this::aggregateTransformerReceiver ).start();
     }
 
     private class AggregateTransformerLoader extends ClassLoader {
@@ -34,9 +35,9 @@ public class Migrator {
     private void aggregateTransformerReceiver() {
         // Define ClassLoader instance from anonymous class
         AggregateTransformerLoader loader = new AggregateTransformerLoader();
-        // Define ServerSocket instance
         // I will run forever!
         try {
+            // Define ServerSocket instance
             ServerSocket server = new ServerSocket(this.port);
             //noinspection InfiniteLoopStatement
             while ( true ) {
@@ -54,15 +55,11 @@ public class Migrator {
                 AbstractAggregateTransformer tran = (AbstractAggregateTransformer) cons.newInstance( consArgs[0], consArgs[1], consArgs[2]);
                 // What to do with the transformer object: Add it to the AAT list
                 this.addTransformer(tran);
-                this.setLastSchemaVersion(tran.getAppVersion());
+                // this.setLastSchemaVersion(tran.getAppVersion());
             }
-        } catch (IOException io) {
-            System.err.println(io.getMessage());
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
         } catch (Exception e) {
-            // Catch-all case
-            System.err.print(e.getMessage());
+            e.printStackTrace();
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -70,31 +67,35 @@ public class Migrator {
         return port;
     }
 
-    private String getLastVersion() {
-        return this.lastSchemaVersion;
+    // Used by the application instance to get the persisted key in DB - always run before a query
+    public String getPersistedKey(String aggregateKey, String schema) {
+        return aggregateKey + ":" + schema;
     }
 
-    private void setLastSchemaVersion(String ver) {
-        this.lastSchemaVersion = ver;
-    }
-
-    // Function to run inbefore queries get executed
-    public String getPersistedKey(String aggregate, String schema) {
-        return aggregate + ":" + schema;
-    }
-
-    // Function to run inbefore queries get executed
-    public void checkIfAggregateIsMigrated(StringQueryInterface db, String aggregate, String schema) {
+    // Function to run after a GET query or before a PUT query gets executed
+    public void checkIfAggregateIsMigrated(StringQueryInterface db, String aggregateKey, String schema, String ag) {
+        AbstractAggregateTransformer spec = this.transformers.get(schema);
+        if (spec == null) { return; }
+        String nextSchema = spec.getNextSchemaVersion();
         // Get the persisted object keys for 1) the desired schema and 2) the newest schema
-        String key = this.getPersistedKey(aggregate, schema); // We using this one too?
-        String newKey = this.getPersistedKey(aggregate, this.getLastVersion());
-        // Next, run a GET query on newKey, which returns an empty string if the key is not found in which case we use the transformer whose app-version is equal to the schema-variable 
-        // String aggregateNewestSchema = db.query(newKey); // FIXME: Use this in an async thread call
+        String key = this.getPersistedKey(aggregateKey, schema); // This is the key used by the application
+        String nextKey = this.getPersistedKey(aggregateKey, nextSchema);
+        // Next, run a GET query on nextKey, which returns an empty string if the key is not found in which case we use the transformer whose app-version is equal to the schema-variable
+        // Callback with CompletableFuture using a Lambda Expression - need to use a thenAccept method
+        CompletableFuture.supplyAsync(() -> db.query(nextKey)).thenApplyAsync((aggregate) -> {
+            if (aggregate.equals("")) {
+                // Migrate the aggregate having the key _key to another with the key _nextKey using spec
+                String migratedAggregate = spec.transformAggregate(ag);
+                db.persist(nextKey, migratedAggregate);
+                return migratedAggregate; // String evaluates to true
+            }
+            return aggregate; // String evaluates to false
+        }).thenAccept((str) -> {
+            if (Boolean.parseBoolean(str)) {
+                System.out.println("Migrated aggregated with key " + key + " to " + nextKey);
+            } else {
+                System.out.println("No migration was applied");
+            }
+        });
     }
-
-// TODO: Receive the aggregate key and the schema key (x-appver header variable) and concatinate them together with ":";
-// TODO: The program must check if the aggregate identified by the the key k already has an updated version for the schema version x, by looking up k:y in the database, given that y is the latest schema version as indicated by our attribute lastSchemaVersion;
-// TODO: Spawn a thread which looks up k:y to check for existence (is the key necessary to migrate) upon the arrival of a query - this thread actively waits for the query to return a string and then conclude if the key requires migration - note that NO ONE waits for this thread
-// TODO: AppVersionResolver thread
-// Datadriver, which passes on the query to the database
 }

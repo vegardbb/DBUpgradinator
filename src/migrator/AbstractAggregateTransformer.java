@@ -1,10 +1,8 @@
 package migrator;
 
-import java.io.Serializable;
-
 // The abstract superclass also used known in DBUpgradinator. All AggregateTransformers implemented must extend this abstract class
-@SuppressWarnings("unused") // Just for this one statement
-public abstract class AbstractAggregateTransformer implements Serializable {
+@SuppressWarnings("unused")
+public abstract class AbstractAggregateTransformer {
     // State variables - initialised in constructor - used to identify update sequence
     private String previousAppVersion;
     private String currentAppVersion;
@@ -16,7 +14,7 @@ public abstract class AbstractAggregateTransformer implements Serializable {
         this.nextAppVersion = nextAppVersion;
     }
 
-    public String getnextAppVersion() {
+    public String getNextSchemaVersion() {
         return nextAppVersion;
     }
 
@@ -39,8 +37,8 @@ public abstract class AbstractAggregateTransformer implements Serializable {
 
     /**
      * Both parameters are strings either returned from or going into a DB query
-     * @param key The key used to get the aggregate
+     * @return String - the new aggregate based on the input
      * @param val The value, which is a generic object
     */
-    public abstract void TransformAggregate(String key, Object val);
+    public abstract String transformAggregate(String val);
 }

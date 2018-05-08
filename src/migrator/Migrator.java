@@ -54,8 +54,8 @@ public class Migrator {
                 in.close();
                 Class c = loader.createClass(className, classData);
                 @SuppressWarnings("unchecked") // Just for this one statement
-                Constructor cons = c.getConstructor(String.class, String.class, String.class);
-                AbstractAggregateTransformer tran = (AbstractAggregateTransformer) cons.newInstance( consArgs[0], consArgs[1], consArgs[2]);
+                Constructor cons = c.getConstructor(String.class, String.class);
+                AbstractAggregateTransformer tran = (AbstractAggregateTransformer) cons.newInstance( consArgs[0], consArgs[1] );
                 // What to do with the transformer object: Add it to the AAT list
                 this.addTransformer(tran);
                 // this.setLastSchemaVersion(tran.getAppVersion());

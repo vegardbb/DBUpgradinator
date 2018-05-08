@@ -1,18 +1,18 @@
 package dba;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.DocumentBuilder;
-import org.w3c.dom.Document;
-import org.w3c.dom.NodeList;
-import org.w3c.dom.Node;
-import org.w3c.dom.Element;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -71,21 +71,20 @@ public class Main {
     // Server side: Upgrade starts upon receiving new transformer class, does not end
     // Arguments args:
     // 0: Absolute path to AggregateTransformerClass
-    // 1: First argument to constructor, previousVersion
-    // 2: Second argument til constructor, currentVersion
-    // 3: Third argument til constructor, nextVersion
-    // 4: Full name for the AggregateTransformerClass extending AbstractAggregateTransformer, used in loadClass
-    // 5: Absolute path to conf.xml
+    // 1: First argument to constructor, currentVersion
+    // 2: Second argument to constructor, nextVersion
+    // 3: Full name for the AggregateTransformerClass extending AbstractAggregateTransformer, used in loadClass
+    // 4: Absolute path to conf.xml
     public static void main(String[] args) {
         String fileName = args[0];
-        String[] array = new String[] { args[1], args[2], args[3] };
-        String className = args[4];
+        String[] array = new String[] { args[1], args[2] };
+        String className = args[3];
 
         try {
             Path path = Paths.get(fileName);
             byte[] data = Files.readAllBytes(path);
 
-            AppNode[] listOfServers = getConfig(args[5]);
+            AppNode[] listOfServers = getConfig(args[4]);
             for (AppNode node : listOfServers) {
                 try {
                     ObjectOutputStream out = new ObjectOutputStream(new Socket(node.getAddress(), node.getPort()).getOutputStream());

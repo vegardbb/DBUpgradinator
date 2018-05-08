@@ -4,22 +4,16 @@ package migrator;
 @SuppressWarnings("unused")
 public abstract class AbstractAggregateTransformer {
     // State variables - initialised in constructor - used to identify update sequence
-    private String previousAppVersion;
     private String currentAppVersion;
     private String nextAppVersion;
 
-    public AbstractAggregateTransformer(String previousAppVersion, String currentAppVersion, String nextAppVersion) {
-        this.previousAppVersion = previousAppVersion;
+    public AbstractAggregateTransformer(String currentAppVersion, String nextAppVersion) {
         this.currentAppVersion = currentAppVersion;
         this.nextAppVersion = nextAppVersion;
     }
 
     public String getNextSchemaVersion() {
         return nextAppVersion;
-    }
-
-    public String getpreviousAppVersion() {
-        return previousAppVersion;
     }
 
     public String getAppVersion() {

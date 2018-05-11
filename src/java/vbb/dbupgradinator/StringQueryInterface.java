@@ -1,4 +1,4 @@
-package migrator;
+package vbb.dbupgradinator;
 
 public interface StringQueryInterface {
     public String query(String key);

@@ -1,4 +1,4 @@
-package migrator;
+package vbb.dbupgradinator;
 
 import java.io.ObjectInputStream;
 import java.lang.reflect.Constructor;
@@ -92,7 +92,7 @@ public class Migrator {
                 db.persist(nextKey, migratedAggregate);
                 return migratedAggregate; // String evaluates to true
             }
-            return aggregate; // String evaluates to false
+            return ""; // The empty string evaluates to false
         }).thenAccept((str) -> {
             if (Boolean.parseBoolean(str)) {
                 logger.info("Migrated aggregated with key " + key + " to " + nextKey);

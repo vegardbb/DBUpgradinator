@@ -1,4 +1,4 @@
-package migrator;
+package vbb.dbupgradinator;
 
 // The abstract superclass also used known in DBUpgradinator. All AggregateTransformers implemented must extend this abstract class
 @SuppressWarnings("unused")

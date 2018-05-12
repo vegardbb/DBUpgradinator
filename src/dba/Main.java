@@ -38,7 +38,7 @@ class AppNode {
 }
 
 public class Main {
-    private static final Logger logger = LogManager.getLogger("DBUpgradinator-client");
+    private static final Logger logger = LogManager.getLogger("DBUpgradinator");
     private static AppNode[] getConfig(String filepath) {
         // Define lists of strings to keep 1) host names and 2) ports
         ArrayList<AppNode> hosts = new ArrayList<>();
@@ -77,7 +77,7 @@ public class Main {
     // 4: Absolute path to conf.xml
     public static void main(String[] args) {
         if (args.length != 5) {
-            logger.warn("You did not specify enough arguments!");
+            logger.error("You did not specify enough arguments!");
             System.exit(1);
         }
         String fileName = args[0];

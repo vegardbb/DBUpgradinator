@@ -6,15 +6,16 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 // Quote Jenkov.com: "Inner classes are associated with an instance of the enclosing class.
 // Thus, you must first create an instance of the enclosing class to create an instance of an inner class."
 
 @SuppressWarnings("unused")
 public class Migrator {
-    private static final Logger logger = LogManager.getLogger("DBUpgradinator");
+    // private static final Logger logger = LogManager.getLogger("DBUpgradinator");
     private final int port;
     private final HashMap<String, AbstractAggregateTransformer> transformers = new HashMap<>(8, (float) 0.95);
 
@@ -61,7 +62,13 @@ public class Migrator {
                 // this.setLastSchemaVersion(tran.getAppVersion());
             }
         } catch (Exception e) {
-            logger.error("This is error", e);
+            String msg = "  Error in AggregateTransformerReceiver: " + e.toString() + "  ";
+            try {
+                Files.write(Paths.get("/var/log/moaning.log"), msg.getBytes());
+            } catch (IOException b) {
+                System.out.println(b.toString());
+                System.out.println(msg);
+            }
             Thread.currentThread().interrupt();
         }
     }
@@ -95,9 +102,21 @@ public class Migrator {
             return ""; // The empty string evaluates to false
         }).thenAccept((str) -> {
             if (Boolean.parseBoolean(str)) {
-                logger.info("Migrated aggregated with key " + key + " to " + nextKey);
+                String msg = "  Info in checkIfAggregateIsMigrated: Migrated aggregated with key " + key + " to " + nextKey + "  ";
+                try {
+                    Files.write(Paths.get("/var/log/moaning.log"), msg.getBytes());
+                } catch (IOException b) {
+                    System.out.println(b.toString());
+                    System.out.println(msg);
+                }
             } else {
-                logger.info("No migration was applied");
+                String msg = "  Info in checkIfAggregateIsMigrated: No migration was applied" + "  ";
+                try {
+                    Files.write(Paths.get("/var/log/moaning.log"), msg.getBytes());
+                } catch (IOException b) {
+                    System.out.println(b.toString());
+                    System.out.println(msg);
+                }
             }
         });
     }

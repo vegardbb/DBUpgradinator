@@ -64,7 +64,7 @@ public class Migrator {
         } catch (Exception e) {
             String msg = "  Error in AggregateTransformerReceiver: " + e.toString() + "  ";
             try {
-                Files.write(Paths.get("/var/log/moaning.log"), msg.getBytes());
+                Files.write(Paths.get("/tmp/moaning.log"), msg.getBytes());
             } catch (IOException b) {
                 System.out.println(b.toString());
                 System.out.println(msg);
@@ -104,7 +104,7 @@ public class Migrator {
             if (Boolean.parseBoolean(str)) {
                 String msg = "  Info in checkIfAggregateIsMigrated: Migrated aggregated with key " + key + " to " + nextKey + "  ";
                 try {
-                    Files.write(Paths.get("/var/log/moaning.log"), msg.getBytes());
+                    Files.write(Paths.get("/tmp/moaning.log"), msg.getBytes());
                 } catch (IOException b) {
                     System.out.println(b.toString());
                     System.out.println(msg);
@@ -112,7 +112,7 @@ public class Migrator {
             } else {
                 String msg = "  Info in checkIfAggregateIsMigrated: No migration was applied" + "  ";
                 try {
-                    Files.write(Paths.get("/var/log/moaning.log"), msg.getBytes());
+                    Files.write(Paths.get("/tmp/moaning.log"), msg.getBytes());
                 } catch (IOException b) {
                     System.out.println(b.toString());
                     System.out.println(msg);

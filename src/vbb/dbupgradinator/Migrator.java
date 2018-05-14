@@ -73,13 +73,28 @@ public class Migrator {
         }
     }
 
-    public int getPort() {
-        return port;
-    }
-
     // Used by the application instance to get the persisted key in DB - always run before a query
     public String getPersistedKey(String aggregateKey, String schema) {
         return aggregateKey + ":" + schema;
+    }
+
+    // Function to run after a GET query or before a PUT query gets executed
+    public void migrateAndPostAggregate(StringQueryInterface db, String aggregateKey, String schema, String ag) {
+        AbstractAggregateTransformer spec = this.transformers.get(schema);
+        if (spec == null) { return; }
+        String nextSchema = spec.getNextSchemaVersion();
+        String key = this.getPersistedKey(aggregateKey, schema); // This is the key used by the application
+        String nextKey = this.getPersistedKey(aggregateKey, nextSchema);
+        String migratedAggregate = spec.transformAggregate(ag);
+        CompletableFuture.runAsync(() -> db.persist(nextKey, migratedAggregate)).thenRun(() -> {
+            String msg = "  Info in migrateAndPostAggregate: Migrated aggregate with key " + key + " to " + nextKey + "  ";
+            try {
+                Files.write(Paths.get("/tmp/moaning.log"), msg.getBytes());
+            } catch (IOException b) {
+                System.out.println(b.toString());
+                System.out.println(msg);
+            }
+        });
     }
 
     // Function to run after a GET query or before a PUT query gets executed
@@ -102,7 +117,7 @@ public class Migrator {
             return ""; // The empty string evaluates to false
         }).thenAccept((str) -> {
             if (Boolean.parseBoolean(str)) {
-                String msg = "  Info in checkIfAggregateIsMigrated: Migrated aggregated with key " + key + " to " + nextKey + "  ";
+                String msg = "  Info in checkIfAggregateIsMigrated: Migrated aggregate with key " + key + " to " + nextKey + "  ";
                 try {
                     Files.write(Paths.get("/tmp/moaning.log"), msg.getBytes());
                 } catch (IOException b) {

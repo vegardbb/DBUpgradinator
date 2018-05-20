@@ -75,8 +75,9 @@ public class Main {
     // 2: Second argument to constructor, nextVersion
     // 3: Full name for the AggregateTransformerClass extending AbstractAggregateTransformer, used in loadClass
     // 4: Absolute path to conf.xml
+    // 5: Any string at all which indicates whether to keep the while loop in Migrator going or not
     public static void main(String[] args) {
-        if (args.length != 5) {
+        if ((args.length < 5) || (args.length > 6)) {
             logger.error("You did not specify enough arguments!");
             System.exit(1);
         }
@@ -97,6 +98,7 @@ public class Main {
                     out.flush();
                     out.writeObject(array);
                     out.writeObject(className);
+                    out.writeObject(Boolean.parseBoolean(args[5]));
                     out.close();
                 } catch (IOException io) {
                     logger.error("I/O Failure!", io);

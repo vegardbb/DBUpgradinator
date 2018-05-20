@@ -21,7 +21,7 @@ public abstract class AbstractAggregateTransformer {
     }
 
     // Use this function when implementing TransformAggregate in subclass
-    public Boolean checkAggregateKeyVersion(String key) {
+    public boolean checkAggregateKeyVersion(String key) {
         // Split string into a collection of substrings and check if the collection of strings is exactly of length 2
         String[] col = key.split(":");
         if (col.length != 2) { return false; }

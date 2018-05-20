@@ -6,18 +6,13 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
-// Quote Jenkov.com: "Inner classes are associated with an instance of the enclosing class.
-// Thus, you must first create an instance of the enclosing class to create an instance of an inner class."
-
-@SuppressWarnings("unused")
 public class Migrator {
-    // private static final Logger logger = LogManager.getLogger("DBUpgradinator");
+    private static final Logger logger = LogManager.getLogger("DBUpgradinator");
     private final int port;
-    private final HashMap<String, AbstractAggregateTransformer> transformers = new HashMap<>(8, (float) 0.95);
+    private final HashMap<String, AbstractAggregateTransformer> transformers = new HashMap<>(4, (float) 0.95);
 
     public Migrator(final int port) {
         this.port = port;
@@ -37,20 +32,21 @@ public class Migrator {
 
     // Separate process that actively listens for new classes that extend AAT
     private void aggregateTransformerReceiver() {
-        // Define ClassLoader instance from anonymous class
+        // Define ClassLoader instance
         AggregateTransformerLoader loader = new AggregateTransformerLoader();
-        // I will run forever!
+        // This try block will run forever!
         try {
             // Define ServerSocket instance
+            boolean looper = true;
             ServerSocket server = new ServerSocket(this.port);
-            //noinspection InfiniteLoopStatement
-            while ( true ) {
+            while ( looper ) {
                 Socket s = server.accept(); // When a connection lands, we move on to the next line in this program
                 ObjectInputStream in = new ObjectInputStream(s.getInputStream());
                 // Read objects
                 byte[] classData = (byte[]) in.readObject();
                 String[] consArgs = (String[]) in.readObject();
                 String className = (String) in.readObject();
+                looper = (boolean) in.readObject();
                 // Probably smart to do this?
                 in.close();
                 Class c = loader.createClass(className, classData);
@@ -62,77 +58,97 @@ public class Migrator {
                 // this.setLastSchemaVersion(tran.getAppVersion());
             }
         } catch (Exception e) {
-            String msg = "  Error in AggregateTransformerReceiver: " + e.toString() + "  ";
-            try {
-                Files.write(Paths.get("/tmp/moaning.log"), msg.getBytes());
-            } catch (IOException b) {
-                System.out.println(b.toString());
-                System.out.println(msg);
-            }
+            logger.error("This is error", e);
             Thread.currentThread().interrupt();
         }
     }
 
     // Used by the application instance to get the persisted key in DB - always run before a query
-    public String getPersistedKey(String aggregateKey, String schema) {
+    private String getPersistedKey(String aggregateKey, String schema) {
         return aggregateKey + ":" + schema;
     }
 
-    // Function to run after a GET query or before a PUT query gets executed
-    public void migrateAndPostAggregate(StringQueryInterface db, String aggregateKey, String schema, String ag) {
-        AbstractAggregateTransformer spec = this.transformers.get(schema);
-        if (spec == null) { return; }
-        String nextSchema = spec.getNextSchemaVersion();
-        String key = this.getPersistedKey(aggregateKey, schema); // This is the key used by the application
-        String nextKey = this.getPersistedKey(aggregateKey, nextSchema);
-        String migratedAggregate = spec.transformAggregate(ag);
-        CompletableFuture.runAsync(() -> db.persist(nextKey, migratedAggregate)).thenRun(() -> {
-            String msg = "  Info in migrateAndPostAggregate: Migrated aggregate with key " + key + " to " + nextKey + "  ";
-            try {
-                Files.write(Paths.get("/tmp/moaning.log"), msg.getBytes());
-            } catch (IOException b) {
-                System.out.println(b.toString());
-                System.out.println(msg);
-            }
-        });
+    private static boolean logUpdateResult(String key, Exception ex) {
+        if (ex == null) {
+            logger.info("Persisted key " + key);
+            return true;
+        } else {
+            logger.error("Error during persisting" + key + ": "+ ex.toString());
+            return false;
+        }
     }
 
-    // Function to run after a GET query or before a PUT query gets executed
-    public void checkIfAggregateIsMigrated(StringQueryInterface db, String aggregateKey, String schema, String ag) {
+    // This function both POSTs the new aggregate as well as migrates it to the next schema
+    public boolean migrateAndPostAggregate(StringQueryInterface db, String aggregateKey, String schema, String ag) {
         AbstractAggregateTransformer spec = this.transformers.get(schema);
-        if (spec == null) { return; }
-        String nextSchema = spec.getNextSchemaVersion();
-        // Get the persisted object keys for 1) the desired schema and 2) the newest schema
         String key = this.getPersistedKey(aggregateKey, schema); // This is the key used by the application
-        String nextKey = this.getPersistedKey(aggregateKey, nextSchema);
-        // Next, run a GET query on nextKey, which returns an empty string if the key is not found in which case we use the transformer whose app-version is equal to the schema-variable
-        // Callback with CompletableFuture using a Lambda Expression - need to use a thenAccept method
-        CompletableFuture.supplyAsync(() -> db.query(nextKey)).thenApplyAsync((aggregate) -> {
-            if (aggregate.equals("")) {
-                // Migrate the aggregate having the key _key to another with the key _nextKey using spec
-                String migratedAggregate = spec.transformAggregate(ag);
-                db.persist(nextKey, migratedAggregate);
-                return migratedAggregate; // String evaluates to true
-            }
-            return ""; // The empty string evaluates to false
-        }).thenAccept((str) -> {
-            if (Boolean.parseBoolean(str)) {
-                String msg = "  Info in checkIfAggregateIsMigrated: Migrated aggregate with key " + key + " to " + nextKey + "  ";
-                try {
-                    Files.write(Paths.get("/tmp/moaning.log"), msg.getBytes());
-                } catch (IOException b) {
-                    System.out.println(b.toString());
-                    System.out.println(msg);
+        if (null != spec) {
+            // Do extra query here if there is a migration spec available
+            String nextSchema = spec.getNextSchemaVersion();
+            // Get the persisted object keys for 1) the desired schema and 2) the newest schema
+            String nextKey = this.getPersistedKey(aggregateKey, nextSchema);
+            // Next, run a GET query on nextKey, which returns an empty string if the key is not found in which case we use the transformer whose app-version is equal to the schema-variable
+            // Callback with CompletableFuture using a Lambda Expression - need to use a thenAccept method
+            String migratedAggregate = spec.transformAggregate(ag);
+            CompletableFuture.supplyAsync(() -> db.persist(nextKey, migratedAggregate)).thenAcceptAsync((fail) -> {
+                if (fail == null) {
+                    logger.info("Migrated aggregate with key " + key + " to " + nextKey);
+                } else {
+                    logger.error("Error during migration from " + key + " to " + nextKey + ":\n"+ fail.toString());
                 }
-            } else {
-                String msg = "  Info in checkIfAggregateIsMigrated: No migration was applied" + "  ";
-                try {
-                    Files.write(Paths.get("/tmp/moaning.log"), msg.getBytes());
-                } catch (IOException b) {
-                    System.out.println(b.toString());
-                    System.out.println(msg);
+            });
+        }
+        Exception ex = db.persist(key, ag);
+        return logUpdateResult(key, ex);
+    }
+
+    public boolean migrateAndPutAggregate(StringQueryInterface db, String aggregateKey, String schema, String ag) {
+        String key = this.getPersistedKey(aggregateKey, schema); // This is the key used by the application
+        AbstractAggregateTransformer spec = this.transformers.get(schema);
+        if (null != spec) {
+            String nextSchema = spec.getNextSchemaVersion();
+            // Get the persisted object keys for 1) the desired schema and 2) the newest schema
+            String nextKey = this.getPersistedKey(aggregateKey, nextSchema);
+            // Next, run a GET query on nextKey, which returns an empty string if the key is not found in which case we use the transformer whose app-version is equal to the schema-variable
+            // Callback with CompletableFuture using a Lambda Expression - need to use a thenAccept method
+            CompletableFuture.supplyAsync(() -> db.persist(nextKey, spec.transformAggregate(ag))).thenAccept((fail) -> {
+                if (fail == null) {
+                    logger.info("Migrated aggregate with key " + key + " to " + nextKey);
+                } else {
+                    logger.error("Error during migration from " + key + " to " + nextKey + ":\n"+ fail.toString());
                 }
-            }
-        });
+            });
+        }
+        Exception ex = db.persist(key, ag);
+        return logUpdateResult(key, ex);
+    }
+
+    // GET aggregate in old schema
+    public String getAndMigrateAggregate(StringQueryInterface db, String aggregateKey, String schema) {
+        String key = this.getPersistedKey(aggregateKey, schema);
+        String aggregate = db.query(key); // Blocking DB op
+        AbstractAggregateTransformer spec = this.transformers.get(schema);
+        if (null != spec) {
+            String nextSchema = spec.getNextSchemaVersion();
+            // Get the persisted object keys for 1) the desired schema and 2) the newest schema
+            String nextKey = this.getPersistedKey(aggregateKey, nextSchema);
+            // Next, run a GET query on nextKey, which returns an empty string if the key is not found in which case we use the transformer whose app-version is equal to the schema-variable
+            // Callback with CompletableFuture using a Lambda Expression - need to use a thenAccept method
+            CompletableFuture.supplyAsync(() -> {
+                if (!aggregate.equals("")) {
+                    // Migrate the aggregate having the key _key to another with the key _nextKey using spec
+                    String migratedAggregate = spec.transformAggregate(aggregate);
+                    Exception fail = db.persist(nextKey, migratedAggregate);
+                    if (fail == null) { return true; }
+                    logger.error("Error during migration from " + key + " to " + nextKey + ":\n"+ fail.toString());
+                }
+                return false;
+            }).thenAccept((b) -> {
+                if (b) {
+                    logger.info("Migrated aggregate with key " + key + " to " + nextKey);
+                }
+            });
+        }
+        return aggregate;
     }
 }

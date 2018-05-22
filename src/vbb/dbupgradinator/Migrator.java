@@ -1,9 +1,10 @@
 package vbb.dbupgradinator;
 
-import java.io.ObjectInputStream;
 import java.lang.reflect.Constructor;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import org.apache.logging.log4j.LogManager;
@@ -11,11 +12,11 @@ import org.apache.logging.log4j.Logger;
 
 public class Migrator {
     private static final Logger logger = LogManager.getLogger("DBUpgradinator");
-    private final int port;
+    private final String className;
     private final HashMap<String, AbstractAggregateTransformer> transformers = new HashMap<>(4, (float) 0.95);
 
-    public Migrator(final int port) {
-        this.port = port;
+    public Migrator(final String className) {
+        this.className = className;
         // Sets up separate process which listens actively on the server socket
         new Thread( this::aggregateTransformerReceiver ).start();
     }
@@ -30,36 +31,24 @@ public class Migrator {
     // Addition of transformer class to the HashMap
     private void addTransformer(AbstractAggregateTransformer t) { this.transformers.put(t.getAppVersion(), t); }
 
+    // FIXME: Change this function to do local file I/O instead of socket I/O.
     // Separate process that actively listens for new classes that extend AAT
     private void aggregateTransformerReceiver() {
         // Define ClassLoader instance
         AggregateTransformerLoader loader = new AggregateTransformerLoader();
-        // This try block will run forever!
-        try {
-            // Define ServerSocket instance
-            boolean looper = true;
-            ServerSocket server = new ServerSocket(this.port);
-            while ( looper ) {
-                Socket s = server.accept(); // When a connection lands, we move on to the next line in this program
-                ObjectInputStream in = new ObjectInputStream(s.getInputStream());
-                // Read objects
-                byte[] classData = (byte[]) in.readObject();
-                String[] consArgs = (String[]) in.readObject();
-                String className = (String) in.readObject();
-                looper = (boolean) in.readObject();
+        while ( this.transformers.size() < 1 ) {
+            try {
+                Path path = Paths.get( new URI("./" + this.className + ".class"));
+                byte[] classData = Files.readAllBytes(path);
                 // Probably smart to do this?
-                in.close();
-                Class c = loader.createClass(className, classData);
-                @SuppressWarnings("unchecked") // Just for this one statement
+                Class c = loader.createClass(this.className, classData);
                 Constructor cons = c.getConstructor(String.class, String.class);
-                AbstractAggregateTransformer tran = (AbstractAggregateTransformer) cons.newInstance( consArgs[0], consArgs[1] );
+                AbstractAggregateTransformer tran = (AbstractAggregateTransformer) cons.newInstance( "x", "y" );
                 // What to do with the transformer object: Add it to the AAT list
                 this.addTransformer(tran);
-                // this.setLastSchemaVersion(tran.getAppVersion());
+            } catch (Exception e) {
+                logger.error("An error occurred in AggregateTransformerReceiver ", e);
             }
-        } catch (Exception e) {
-            logger.error("This is error", e);
-            Thread.currentThread().interrupt();
         }
     }
 

@@ -1,0 +1,23 @@
+{
+  "name": "webappsimulator",
+  "version": "1.1.4",
+  "description": "Generates aggregates and posts them to a hard coded application server",
+  "main": "index.js",
+  "dependencies": {
+    "winston-daily-rotate-file": "^1.7.2",
+    "winston": "^2.4.0",
+    "isomorphic-fetch": "^2.1.2"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "master",
+    "thesis",
+    "ntnu",
+    "idi",
+    "2018"
+  ],
+  "author": "Vegard Bjerkli Bugge",
+  "license": "ISC"
+}

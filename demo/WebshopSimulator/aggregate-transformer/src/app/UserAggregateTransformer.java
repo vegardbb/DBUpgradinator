@@ -63,7 +63,7 @@ public class UserAggregateTransformer extends AbstractAggregateTransformer {
       jo.remove("city");
       jo.remove("state");
       jo.remove("zipCode");
-      jo.put("country", getCountryCode(countryAbb)); // Change the field usage
+      jo.put("country", getCountryCode(countryAbb)); // Change the field usage and type
       return jo.toString();
     }
 }

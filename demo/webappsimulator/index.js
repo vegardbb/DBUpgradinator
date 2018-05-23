@@ -36,10 +36,23 @@ const getIdList = function getLogg(fileName) {
   let lines = [];
   try {
     lines = fs.readFileSync(fileName, 'ascii').split("\r\n"); // throws    
-  } catch (Exception w) {
+  } catch (w) {
     appLogger.error(w.message);
   }
   return lines;
+};
+
+// GET a previously persisted aggregate from database using the old schema
+const getRequest = function readItemProgram(api, caller) {
+  fetch(api, { // `${urlList[pointer]}?schema=${secondSchemaVersion}`
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+  }).then(getJSONResponse)
+    .then(caller)
+    .catch(err => appLogger.error(`GET Error ${err.status}: ${err.message}`));
 };
 
 // Step 1 of test process: POST 6 GB worth of aggregates to database without migrating using the first schema
@@ -51,7 +64,7 @@ const partOne = function postProgram() {
   let seed;
   let countryFlag;
   let byteSize = 0;
-  let pointer = 0; 
+  let pointer = 0;
   while (byteSize < 8*10**9) {
     countryFlag = byteSize < 4*10**9;
     seed = countryFlag ? uk : aus;
@@ -85,85 +98,97 @@ const partOne = function postProgram() {
   }
 };
 
-partOne();
-// main();
-
-// Actual testprogram
-const main = function nodeProgram() {
+// Step 2 of test process: Migrate each of aggregates to database without migrating using the first schema
+const partTwo = function migrateProgram() {
+  const countries = { 44: 'United Kingdom' , 61: 'Australia' };
+  const addSemiColon = (str) => { if (str) return `${str}; `; else return ''; };
   const persistedKeys = getIdList("./ids.txt"); // TODO: Implement this loading method
   // Common points of each part of testing script goes here
   const aus = loadFile("./aus.csv");
   const uk = loadFile("./uk.csv");
-  const writeCallback = function afterWriteRequestOccured({ ok, message }, body) {
+  const getCallback = function afterGetRequestOccurred({ ok, message, aggregate }) {
     if (ok) {
-      appLogger.info(`Request AOK: ${message}`);
-      byteSize = byteSize + getAggregateUTF8Size(body);
+      appLogger.info(`GET Request AOK: ${message}; aggregate: ${aggregate}`);
     } else {
-      appLogger.info(`Request failed: ${message}`);
+      appLogger.info(`GET Request failed: ${message}`);
     }
-      pointer = (pointer + 1) % 4;
-  };
-  const getCallback = function afterGetRequestOccured({ ok, message, aggregate }) {
-    if (ok) {
-      appLogger.info(`Request AOK: ${message}; aggregate: ${aggregate}`);
-    } else {
-      appLogger.info(`Request failed: ${message}`);
-    }
-      pointer = (pointer + 1) % 4;
+    pointer = (pointer + 1) % 4;
   };
   let byteSize = 0;
   let pointer = 0;
-  let map;
+  let seed;
+  let httpBody;
   let countryFlag;
   let id;
   while (persistedKeys.length > 0) {
     id = persistedKeys.pop();
-    if (Math.random() < 0.3) {
+    if (Math.random() < 0.4) {
       // Run PUT
       countryFlag = byteSize < 5*10**9;
-      map = countryFlag ? uk : aus;
-      putRequest(map, countryFlag ? 'UK' : 'AUS', `${urlList[pointer]}/${id}?schema=${secondSchemaVersion}`, 'PUT', writeCallback);
+      seed = countryFlag ? uk : aus;
+      // PUT request using the old schema, ie, updating an aggregate in the previous schema version
+      httpBody = JSON.stringify({
+        givenName: chooseRandom(seed.get('givenName')),
+        surname:chooseRandom(seed.get('surname')),
+        telephoneNumber: chooseRandom(seed.get('telephoneNumber')),
+        streetAddress: chooseRandom(seed.get('streetAddress')),
+        city: chooseRandom(seed.get('city')),
+        state: chooseRandom(seed.get('state')),
+        zipCode: chooseRandom(seed.get('zipCode')),
+        country: countryFlag ? 'UK' : 'AUS',
+      });
+      fetch(`${urlList[pointer]}/${id}?schema=${firstSchemaVersion}`, {
+        method: 'PUT',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: httpBody,
+      }).then(getJSONResponse)
+        .then(({ ok, message }) => {
+          if (ok) {
+            appLogger.info(`PUT Request AOK: ${message}; Aggregate: ${httpBody}`);
+            byteSize = byteSize + getAggregateUTF8Size(httpBody);
+            getRequest(`${urlList[((pointer + 3) % 4)]}/${id}?schema=${secondSchemaVersion}`, getCallback);
+          } else {
+            appLogger.info(`PUT Request failed: ${message}`);
+          }
+          pointer = (pointer + 1) % 4;
+        }).catch(err => appLogger.error(`PUT Error ${err.status}: ${err.message}`));
     } else {
       // Run GET
-      getRequest(`${urlList[pointer]}/${id}?schema=${secondSchemaVersion}`, getCallback);
+      getRequest(`${urlList[pointer]}/${id}?schema=${firstSchemaVersion}`, getCallback);
     }
-    if (byteSize < 10**9) putRequest(aus, 'AUS', `${urlList[pointer]}?schema=${secondSchemaVersion}`, 'POST', writeCallback);
+    // Demonstrates that the migration works
+    if (byteSize < 10**9) {
+      const httpPOSTBody = JSON.stringify({
+        givenName: chooseRandom(aus.get('givenName')),
+        surname:chooseRandom(aus.get('surname')),
+        telephoneNumber: chooseRandom(aus.get('telephoneNumber')),
+        address: `${addSemiColon(chooseRandom(aus.get('streetAddress')))}${addSemiColon(chooseRandom(aus.get('city')))}${addSemiColon(chooseRandom(aus.get('state')))}${addSemiColon(chooseRandom(aus.get('zipCode')))}${countries[61]}`,
+        country: 61,
+      });
+      fetch(`${urlList[((pointer + 2) % 4)]}?schema=${secondSchemaVersion}`, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: httpPOSTBody,
+      }).then(getJSONResponse)
+        .then(({ ok, message }) => {
+          if (ok) {
+            appLogger.info(`POST Request AOK: ${message}`);
+            byteSize = byteSize + getAggregateUTF8Size(httpPOSTBody);
+          } else {
+            appLogger.info(`POST Request failed: ${message}`);
+          }
+          pointer = (pointer + 1) % 4;
+        })
+        .catch(err => appLogger.error(`POST Error ${err.status}: ${err.message}`));
+    }
   }
 };
 
-// POST a migrated aggregate to database using the new schema - 3rd act of test
-const putRequest = function writeItemProgram(seed, country, api, hm, caller) {
-  const httpBody = JSON.stringify({
-    givenName: chooseRandom(seed.get('givenName')),
-    surname:chooseRandom(seed.get('surname')),
-    telephoneNumber: chooseRandom(seed.get('telephoneNumber')),
-    streetAddress: chooseRandom(seed.get('streetAddress')),
-    city: chooseRandom(seed.get('city')),
-    state: chooseRandom(seed.get('state')),
-    zipCode: chooseRandom(seed.get('zipCode')),
-    country, // : countryFlag ? 44 : 61,
-  });
-  fetch(api, { // 
-    method: hm, // 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: httpBody,
-  }).then(getJSONResponse)
-    .then(({ ok, message }) => caller({ ok, message }, httpBody))
-    .catch(err => appLogger.error(`Error ${err.status}: ${err.message}`));
-};
-
-// GET a previously persisted aggregate from database using the old schema
-const getRequest = function writeItemProgram(api, caller) {
-  fetch(api, { // `${urlList[pointer]}?schema=${secondSchemaVersion}`
-    method: 'GET',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-  }).then(getJSONResponse)
-    .then(caller)
-    .catch(err => appLogger.error(`Error ${err.status}: ${err.message}`));
-};
+partOne();
+// partTwo();

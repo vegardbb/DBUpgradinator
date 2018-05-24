@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -21,6 +22,12 @@ public class Migrator {
         new Thread( this::aggregateTransformerReceiver ).start();
     }
 
+    public Migrator() {
+        this.className = "UserAggregateTransformer";
+        // Sets up separate process which listens actively on the server socket
+        new Thread( this::aggregateTransformerReceiver ).start();
+    }
+
     private class AggregateTransformerLoader extends ClassLoader {
         AggregateTransformerLoader() { super(); }
         final Class<?> createClass(String name, byte[] b) throws ClassFormatError {
@@ -31,21 +38,22 @@ public class Migrator {
     // Addition of transformer class to the HashMap
     private void addTransformer(AbstractAggregateTransformer t) { this.transformers.put(t.getAppVersion(), t); }
 
-    // FIXME: Change this function to do local file I/O instead of socket I/O.
     // Separate process that actively listens for new classes that extend AAT
     private void aggregateTransformerReceiver() {
         // Define ClassLoader instance
         AggregateTransformerLoader loader = new AggregateTransformerLoader();
         while ( this.transformers.size() < 1 ) {
             try {
-                Path path = Paths.get( new URI("./" + this.className + ".class"));
-                byte[] classData = Files.readAllBytes(path);
-                // Probably smart to do this?
-                Class c = loader.createClass(this.className, classData);
-                Constructor cons = c.getConstructor(String.class, String.class);
-                AbstractAggregateTransformer tran = (AbstractAggregateTransformer) cons.newInstance( "x", "y" );
-                // What to do with the transformer object: Add it to the AAT list
-                this.addTransformer(tran);
+                Path path = Paths.get( new URI("./classes/" + this.className + ".class"));
+                // Use Files.exists - condition
+                if (Files.exists(path)) {
+                    byte[] classData = Files.readAllBytes(path);
+                    Class<?> c = loader.createClass(this.className, classData);
+                    Constructor cons = c.getConstructor(String.class, String.class);
+                    AbstractAggregateTransformer tran = (AbstractAggregateTransformer) cons.newInstance( "x", "y" );
+                    // What to do with the transformer object: Add it to the AAT list
+                    this.addTransformer(tran);
+                }
             } catch (Exception e) {
                 logger.error("An error occurred in AggregateTransformerReceiver ", e);
             }

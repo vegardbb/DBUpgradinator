@@ -33,7 +33,7 @@ public class WebShop {
     // 1: HTTP port used to contact Spark server
     // 2: Class name for Aggregate Transformer
     public static void main(String[] args) {
-        if (args.length != 3) {
+        if (args.length != 2) {
             System.exit(1);
         }
         if (stringNotInteger(args[0]) || stringNotInteger(args[1])) {
@@ -44,7 +44,7 @@ public class WebShop {
         clico.setBootstrapUrls("tcp://localhost:" + args[0]);
         clico.setEnableInconsistencyResolvingLayer(true);
         StringQueryExecutor dbi = new StringQueryExecutor(clico);
-        Migrator m = new Migrator(args[2]);
+        Migrator m = new Migrator();
 
         port((Integer.parseInt(args[1]))); // Starts the server
         get("/hello", (request, response) -> "{\"message\": \"I am alive!\"}");

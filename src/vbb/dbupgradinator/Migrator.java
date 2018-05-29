@@ -23,7 +23,7 @@ public class Migrator {
     }
 
     public Migrator() {
-        this.className = "UserAggregateTransformer";
+        this.className = "app.UserAggregateTransformer";
         // Sets up separate process which listens actively on the server socket
         new Thread( this::aggregateTransformerReceiver ).start();
     }
@@ -54,7 +54,7 @@ public class Migrator {
                     // What to do with the transformer object: Add it to the AAT list
                     this.addTransformer(tran);
                 }
-            } catch (Exception e) {
+            } catch (ClassFormatError e) {
                 logger.error("An error occurred in AggregateTransformerReceiver ", e);
             }
         }

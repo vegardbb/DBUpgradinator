@@ -1,8 +1,6 @@
 package vbb.dbupgradinator;
 
-import java.io.IOException;
 import java.lang.reflect.Constructor;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -22,6 +20,7 @@ public class Migrator {
 
     public Migrator() {
         this.className = "app.UserAggregateTransformer";
+        this.aggregateTransformerReceiver();
     }
 
     private class AggregateTransformerLoader extends ClassLoader {
@@ -36,8 +35,8 @@ public class Migrator {
 
     private static void log(String s) {
         try {
-            Files.write(Paths.get("./dbupgradinator.log"), s.getBytes(), StandardOpenOption.APPEND);
-        } catch (IOException e) {
+            Files.write(Paths.get("dbupgradinator.log").toAbsolutePath(), s.getBytes(), StandardOpenOption.APPEND);
+        } catch (Exception e) {
             System.out.println();
             e.printStackTrace();
             System.out.println();
@@ -48,7 +47,7 @@ public class Migrator {
     private void aggregateTransformerReceiver() {
         if ( this.transformers.size() < 1 ) {
             try {
-                Path path = Paths.get( new URI("file:///./classes/transformer" + this.className.replace(".","/") + ".class"));
+                Path path = Paths.get( "classes/transformer/" + this.className.replace(".","/") + ".class").toAbsolutePath();
                 if (Files.exists(path)) {
                     byte[] classData = Files.readAllBytes(path);
                     Class<?> c = loader.createClass(this.className, classData);
@@ -56,11 +55,11 @@ public class Migrator {
                     AbstractAggregateTransformer tran = (AbstractAggregateTransformer) cons.newInstance( "x", "y" );
                     // What to do with the transformer object: Add it to the AAT list
                     this.addTransformer(tran);
-                    Date d = new Date();
-                    log("INFO @ " + this.dateFormat.format(d) + " - Received aggregate transformer for schema " + tran.getAppVersion());
+                    log("INFO @ " + this.dateFormat.format(new Date()) + " - Received aggregate transformer for schema " + tran.getAppVersion() + "\n");
                 }
             } catch (Exception e) {
-                log("ERROR @ " + this.dateFormat.format(new Date()) + " " + e.toString());
+                e.printStackTrace();
+                log("ERROR @ " + this.dateFormat.format(new Date()) + " " + e.toString() + "\n");
             }
         }
     }
@@ -72,10 +71,10 @@ public class Migrator {
 
     private boolean logUpdateResult(String key, Exception ex) {
         if (ex == null) {
-            log("INFO @ " + this.dateFormat.format(new Date()) + " - Persisted key " + key);
+            log("INFO @ " + this.dateFormat.format(new Date()) + " - Persisted key " + key + "\n");
             return true;
         } else {
-            log("ERROR @ " + this.dateFormat.format(new Date()) + " Error during persisting " + key + ex.toString());
+            log("ERROR @ " + this.dateFormat.format(new Date()) + " Error during persisting " + key + ex.toString() + "\n");
             return false;
         }
     }
@@ -95,9 +94,9 @@ public class Migrator {
             String migratedAggregate = spec.transformAggregate(ag);
             CompletableFuture.supplyAsync(() -> db.persist(nextKey, migratedAggregate)).thenAcceptAsync((fail) -> {
                 if (fail == null) {
-                    log("INFO @ " + this.dateFormat.format(new Date()) + " - Migrated aggregate with key " + key + " to " + nextKey);
+                    log("INFO @ " + this.dateFormat.format(new Date()) + " - Migrated aggregate with key " + key + " to " + nextKey + "\n");
                 } else {
-                    log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during persisting " + nextKey + "\n" + fail.toString());
+                    log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during persisting " + nextKey + "\n" + fail.toString() + "\n");
                 }
             });
         }
@@ -117,9 +116,9 @@ public class Migrator {
             // Callback with CompletableFuture using a Lambda Expression - need to use a thenAccept method
             CompletableFuture.supplyAsync(() -> db.persist(nextKey, spec.transformAggregate(ag))).thenAccept((fail) -> {
                 if (fail == null) {
-                    log("INFO @ " + this.dateFormat.format(new Date()) + " - Migrated aggregate with key " + key + " to " + nextKey);
+                    log("INFO @ " + this.dateFormat.format(new Date()) + " - Migrated aggregate with key " + key + " to " + nextKey + "\n");
                 } else {
-                    log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during migration from " + key + " to " + nextKey + ":\n"+ fail.toString());
+                    log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during migration from " + key + " to " + nextKey + ":\n"+ fail.toString() + "\n");
                 }
             });
         }
@@ -145,12 +144,12 @@ public class Migrator {
                     String migratedAggregate = spec.transformAggregate(aggregate);
                     Exception fail = db.persist(nextKey, migratedAggregate);
                     if (fail == null) { return true; }
-                    log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during migration from " + key + " to " + nextKey + ":\n"+ fail.toString());
+                    log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during migration from " + key + " to " + nextKey + ":\n"+ fail.toString() + "\n");
                 }
                 return false;
             }).thenAccept((b) -> {
                 if (b) {
-                    log("INFO @ " + this.dateFormat.format(new Date()) + " - Migrated aggregate with key " + key + " to " + nextKey);
+                    log("INFO @ " + this.dateFormat.format(new Date()) + " - Migrated aggregate with key " + key + " to " + nextKey + "\n");
                 }
             });
         }

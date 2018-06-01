@@ -16,7 +16,7 @@ const config = Object.freeze(
       level: 'debug',
       handleExceptions: true,
       json: true,
-      maxsize: 1024 * 1024 * 100 000, // 100 000 MB
+      maxsize: 1024 * 1024 * 100000,
       maxFiles: 7,
       colorize: false,
       timestamp: localTime,

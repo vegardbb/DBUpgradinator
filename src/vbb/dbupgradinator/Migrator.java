@@ -6,7 +6,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
-import java.util.concurrent.CompletableFuture;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -92,13 +91,14 @@ public class Migrator {
             // Next, run a GET query on nextKey, which returns an empty string if the key is not found in which case we use the transformer whose app-version is equal to the schema-variable
             // Callback with CompletableFuture using a Lambda Expression - need to use a thenAccept method
             String migratedAggregate = spec.transformAggregate(ag);
-            CompletableFuture.supplyAsync(() -> db.persist(nextKey, migratedAggregate)).thenAcceptAsync((fail) -> {
+            new Thread(() -> {
+                Exception fail = db.persist(nextKey, migratedAggregate);
                 if (fail == null) {
                     log("INFO @ " + this.dateFormat.format(new Date()) + " - Migrated aggregate with key " + key + " to " + nextKey + "\n");
                 } else {
                     log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during persisting " + nextKey + "\n" + fail.toString() + "\n");
                 }
-            });
+            }).start();
         }
         Exception ex = db.persist(key, ag);
         return logUpdateResult(key, ex);
@@ -114,13 +114,14 @@ public class Migrator {
             String nextKey = this.getPersistedKey(aggregateKey, nextSchema);
             // Next, run a GET query on nextKey, which returns an empty string if the key is not found in which case we use the transformer whose app-version is equal to the schema-variable
             // Callback with CompletableFuture using a Lambda Expression - need to use a thenAccept method
-            CompletableFuture.supplyAsync(() -> db.persist(nextKey, spec.transformAggregate(ag))).thenAccept((fail) -> {
+            new Thread(() -> {
+                Exception fail = db.persist(nextKey, spec.transformAggregate(ag));
                 if (fail == null) {
                     log("INFO @ " + this.dateFormat.format(new Date()) + " - Migrated aggregate with key " + key + " to " + nextKey + "\n");
                 } else {
-                    log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during migration from " + key + " to " + nextKey + ":\n"+ fail.toString() + "\n");
+                    log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during persisting " + nextKey + "\n" + fail.toString() + "\n");
                 }
-            });
+            }).start();
         }
         Exception ex = db.persist(key, ag);
         return logUpdateResult(key, ex);
@@ -138,20 +139,22 @@ public class Migrator {
             String nextKey = this.getPersistedKey(aggregateKey, nextSchema);
             // Next, run a GET query on nextKey, which returns an empty string if the key is not found in which case we use the transformer whose app-version is equal to the schema-variable
             // Callback with CompletableFuture using a Lambda Expression - need to use a thenAccept method
-            CompletableFuture.supplyAsync(() -> {
+            new Thread(() -> {
+                // If the aggregate does not exist, then there is no point in migrating it in the first place
                 if (!aggregate.equals("")) {
                     // Migrate the aggregate having the key _key to another with the key _nextKey using spec
-                    String migratedAggregate = spec.transformAggregate(aggregate);
-                    Exception fail = db.persist(nextKey, migratedAggregate);
-                    if (fail == null) { return true; }
-                    log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during migration from " + key + " to " + nextKey + ":\n"+ fail.toString() + "\n");
+                    String checkedAggregate = db.query(nextKey); // Blocking DB op
+                    if (checkedAggregate.equals("")) {
+                        String migratedAggregate = spec.transformAggregate(aggregate);
+                        Exception fail = db.persist(nextKey, migratedAggregate); // Blocking DB op
+                        if (fail == null) {
+                            log("INFO @ " + this.dateFormat.format(new Date()) + " - Migrated aggregate with key " + key + " to " + nextKey + "\n");
+                        } else {
+                            log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during migration from " + key + " to " + nextKey + ":\n" + fail.toString() + "\n");
+                        }
+                    }
                 }
-                return false;
-            }).thenAccept((b) -> {
-                if (b) {
-                    log("INFO @ " + this.dateFormat.format(new Date()) + " - Migrated aggregate with key " + key + " to " + nextKey + "\n");
-                }
-            });
+            }).start();
         }
         return aggregate;
     }

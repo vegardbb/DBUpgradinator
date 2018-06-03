@@ -12,7 +12,6 @@ winston.emitErrs = true;
 const appLogger = new winston.Logger({
   transports: [
     new winston.transports.DailyRotateFile(config.application), // Log to file
-    new winston.transports.Console(config.console),             // Log to console
   ],
   exitOnError: false,
 });

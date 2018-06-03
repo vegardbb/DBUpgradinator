@@ -16,11 +16,17 @@ const config = Object.freeze(
       level: 'debug',
       handleExceptions: true,
       json: true,
-      maxsize: 1024 * 1024 * 100 000, // 100 000 MB
+      maxsize: 1024 * 1024 * 10000,
       maxFiles: 7,
       colorize: false,
       timestamp: localTime,
     },
+  }
+);
+
+module.exports = config;
+
+/*
     console: {
       level: 'debug',
       handleExceptions: true,
@@ -28,7 +34,4 @@ const config = Object.freeze(
       colorize: true,
       timestamp: localTime,
     },
-  }
-);
-
-module.exports = config;
+*/

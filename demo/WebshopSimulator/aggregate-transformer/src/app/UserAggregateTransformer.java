@@ -21,7 +21,7 @@ public class UserAggregateTransformer extends AbstractAggregateTransformer {
     // The transformation method may utilize private helper functions
     private static String checkEmptyness(String d) {
         if (d.isEmpty()) { return ""; }
-        return d + "; ";
+        return d + "\n";
     }
     private int getCountryCode(String country) {
         // In order to be able tot transform an aggregate, you often need some

@@ -1,8 +1,8 @@
 package vbb.dbupgradinator;
 
 public abstract class AbstractAggregateTransformer {
-    private String currentAppVersion;
-    private String nextAppVersion;
+    private final String currentAppVersion;
+    private final String nextAppVersion;
 
     public AbstractAggregateTransformer(String currentAppVersion, String nextAppVersion) {
         this.currentAppVersion = currentAppVersion;

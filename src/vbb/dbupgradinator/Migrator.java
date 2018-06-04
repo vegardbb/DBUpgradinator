@@ -78,36 +78,11 @@ public class Migrator {
         }
     }
 
-    // This function both POSTs the new aggregate as well as migrates it to the next schema
-    public boolean migrateAndPostAggregate(StringQueryInterface db, String aggregateKey, String schema, String ag) {
-        this.aggregateTransformerReceiver();
-        AbstractAggregateTransformer spec = this.transformers.get(schema);
-        String key = this.getPersistedKey(aggregateKey, schema); // This is the key used by the application
-        if (null != spec) {
-            // Do extra query here if there is a migration spec available
-            String nextSchema = spec.getNextSchemaVersion();
-            // Get the persisted object keys for 1) the desired schema and 2) the newest schema
-            String nextKey = this.getPersistedKey(aggregateKey, nextSchema);
-            // Next, run a GET query on nextKey, which returns an empty string if the key is not found in which case we use the transformer whose app-version is equal to the schema-variable
-            // Callback with CompletableFuture using a Lambda Expression - need to use a thenAccept method
-            String migratedAggregate = spec.transformAggregate(ag);
-            new Thread(() -> {
-                Exception fail = db.persist(nextKey, migratedAggregate);
-                if (fail == null) {
-                    log("INFO @ " + this.dateFormat.format(new Date()) + " - Migrated aggregate with key " + key + " to " + nextKey + "\n");
-                } else {
-                    log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during persisting " + nextKey + "\n" + fail.toString() + "\n");
-                }
-            }).start();
-        }
-        Exception ex = db.persist(key, ag);
-        return logUpdateResult(key, ex);
-    }
-
+    // This function both PUTs/POSTs the new aggregate as well as migrates it to the next schema
     public boolean migrateAndPutAggregate(StringQueryInterface db, String aggregateKey, String schema, String ag) {
         this.aggregateTransformerReceiver();
-        String key = this.getPersistedKey(aggregateKey, schema); // This is the key used by the application
         AbstractAggregateTransformer spec = this.transformers.get(schema);
+        String key = this.getPersistedKey(aggregateKey, schema); // This is the key used by the application
         if (null != spec) {
             String nextSchema = spec.getNextSchemaVersion();
             // Get the persisted object keys for 1) the desired schema and 2) the newest schema

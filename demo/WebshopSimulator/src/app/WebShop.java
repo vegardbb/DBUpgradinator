@@ -94,7 +94,7 @@ public class WebShop {
             String schemaVersion = request.queryParamOrDefault("schema","x");
             String uid = UUID.randomUUID().toString();
             String jsonObj = request.body();
-            boolean flag = m.migrateAndPostAggregate(dbi, uid, schemaVersion, jsonObj);
+            boolean flag = m.migrateAndPutAggregate(dbi, uid, schemaVersion, jsonObj);
             if (flag) {
                 response.status(201); // 201 Created
                 return "{ \"ok\": true, \"message\": \"Successfully persisted aggregate having id "+ uid + ", belonging to schema version " + schemaVersion + "\"" + " }";

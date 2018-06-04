@@ -104,7 +104,7 @@ const partOne = function postProgram() {
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 // This function bulk loads 5500 ids at the time.
 // Step 2 of test process: Migrate each of aggregates to database without migrating using the first schema
-const partTwo = async function migrateProgram(persistedKeys) {
+const partTwo = function migrateProgram(persistedKeys) {
   const countries = { 44: 'United Kingdom' , 61: 'Australia' };
   const addSemiColon = (str) => { if (str) return `${str}\n`; else return ''; };
   // Common points of each part of testing script goes here
@@ -120,7 +120,6 @@ const partTwo = async function migrateProgram(persistedKeys) {
   let countryFlag;
   let id;
   let byteSize = 0;
-  await sleep(1000); // Stops while loop from starting next round before
   while (persistedKeys.length > 0) {
     id = persistedKeys.pop();
     if (Math.random() < 0.3) {

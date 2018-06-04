@@ -87,8 +87,6 @@ public class Migrator {
             String nextSchema = spec.getNextSchemaVersion();
             // Get the persisted object keys for 1) the desired schema and 2) the newest schema
             String nextKey = this.getPersistedKey(aggregateKey, nextSchema);
-            // Next, run a GET query on nextKey, which returns an empty string if the key is not found in which case we use the transformer whose app-version is equal to the schema-variable
-            // Callback with CompletableFuture using a Lambda Expression - need to use a thenAccept method
             new Thread(() -> {
                 Exception fail = db.persist(nextKey, spec.transformAggregate(ag));
                 if (fail == null) {
@@ -112,8 +110,6 @@ public class Migrator {
             String nextSchema = spec.getNextSchemaVersion();
             // Get the persisted object keys for 1) the desired schema and 2) the newest schema
             String nextKey = this.getPersistedKey(aggregateKey, nextSchema);
-            // Next, run a GET query on nextKey, which returns an empty string if the key is not found in which case we use the transformer whose app-version is equal to the schema-variable
-            // Callback with CompletableFuture using a Lambda Expression - need to use a thenAccept method
             new Thread(() -> {
                 // If the aggregate does not exist, then there is no point in migrating it in the first place
                 if (!aggregate.equals("")) {

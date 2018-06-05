@@ -58,7 +58,7 @@ public class Migrator {
                 }
             } catch (Exception e) {
                 e.printStackTrace();
-                log("ERROR @ " + this.dateFormat.format(new Date()) + " " + e.toString() + "\n");
+                log("ERROR @ " + this.dateFormat.format(new Date()) + " - " + e.toString() + "\n");
             }
         }
     }
@@ -73,7 +73,7 @@ public class Migrator {
             log("INFO @ " + this.dateFormat.format(new Date()) + " - Persisted key " + key + "\n");
             return true;
         } else {
-            log("ERROR @ " + this.dateFormat.format(new Date()) + " Error during persisting " + key + ex.toString() + "\n");
+            log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during persisting " + key + " - " + ex.toString() + "\n");
             return false;
         }
     }
@@ -92,7 +92,7 @@ public class Migrator {
                 if (fail == null) {
                     log("INFO @ " + this.dateFormat.format(new Date()) + " - Migrated aggregate with key " + key + " to " + nextKey + "\n");
                 } else {
-                    log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during persisting " + nextKey + "\n" + fail.toString() + "\n");
+                    log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during persisting " + nextKey + " - " + fail.toString() + "\n");
                 }
             }).start();
         }
@@ -121,7 +121,7 @@ public class Migrator {
                         if (fail == null) {
                             log("INFO @ " + this.dateFormat.format(new Date()) + " - Migrated aggregate with key " + key + " to " + nextKey + "\n");
                         } else {
-                            log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during migration from " + key + " to " + nextKey + ":\n" + fail.toString() + "\n");
+                            log("ERROR @ " + this.dateFormat.format(new Date()) + " - Error during migration from " + key + " to " + nextKey + " - " + fail.toString() + "\n");
                         }
                     }
                 }

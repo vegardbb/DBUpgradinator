@@ -60,50 +60,10 @@ const getRequest = function readItemProgram(api, caller) {
     .then(caller)
     .catch(err => appLogger.error(`GET Error: ${err.message}`));
 };
-/*
-const partOne = function postProgram() {
-  let httpBody;
-  let seed;
-  let countryFlag;
-  let byteSize = 0;
-  // Produces 1 MB worth of test data in requests
-  while (byteSize < 10**6) {
-    countryFlag = byteSize < 5*10**5;
-    seed = countryFlag ? uk : aus;
-    httpBody = JSON.stringify({
-      givenName: chooseRandom(seed.get('givenName')),
-      surname:chooseRandom(seed.get('surname')),
-      telephoneNumber: chooseRandom(seed.get('telephoneNumber')),
-      streetAddress: chooseRandom(seed.get('streetAddress')),
-      city: chooseRandom(seed.get('city')),
-      state: chooseRandom(seed.get('state')),
-      zipCode: chooseRandom(seed.get('zipCode')),
-      country: countryFlag ? 'UK' : 'AUS',
-    });
-    byteSize = byteSize + getAggregateUTF8Size(httpBody);
-    fetch(`${chooseRandom(urlList)}?schema=${firstSchemaVersion}`, {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: httpBody,
-    }).then(getJSONResponse)
-      .then(({ ok, message }) => {
-        if (ok) {
-          appLogger.info(`Request AOK: ${message}`);
-        } else {
-          appLogger.warn(`Request failed: ${message}`);
-        }
-      }).catch(err => {
-      appLogger.error(`Error: ${err.message}` )
-    });
-  }
-};
-*/
+
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-// This function bulk loads 5500 ids at the time.
-// Step 2 of test process: Migrate each of aggregates to database without migrating using the first schema
+
+// This function bulk loads 5000 ids at the time.
 const partTwo = function migrateProgram(persistedKeys) {
   const countries = { 44: 'United Kingdom' , 61: 'Australia' };
   const addSemiColon = (str) => { if (str) return `${str}\n`; else return ''; };

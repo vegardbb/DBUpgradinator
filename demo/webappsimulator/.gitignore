@@ -6,4 +6,4 @@ lib/*
 node_modules/*
 *.csv
 logs/*
-id.txt
+*.txt

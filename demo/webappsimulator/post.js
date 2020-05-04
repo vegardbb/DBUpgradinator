@@ -12,8 +12,8 @@ const getJSONResponse = function uponReceiving(res) {
   throw new Error('Server response was not ok.');
 };
 
-const firstSchemaVersion = 'x';
-// const secondSchemaVersion = 'y';
+// const firstSchemaVersion = 'x';
+const secondSchemaVersion = 'y';
 const urlList = ["http://167.99.84.243:5001/api", "http://188.166.103.205:5002/api", "http://206.81.31.127:5003/api", "http://206.81.31.128:5004/api"];
 
 const loadFile = function getSis(fileName) {
@@ -33,69 +33,55 @@ const loadFile = function getSis(fileName) {
 const aus = loadFile("aus.csv");
 const uk = loadFile("uk.csv");
 
-const getIdList = function getLogg(fileName) {
-  let lines = [];
-  try {
-    lines = fs.readFileSync(fileName, 'utf8').split("\r\n"); // throws
-  } catch (w) {
-    appLogger.error(w.message);
-  }
-  console.log(`File ${fileName} loaded`);
-  return lines;
-};
-
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-const allKeys = getIdList("id.txt");
-
 const main = async function migrationTest() {
+  const countries = { 44: 'United Kingdom' , 61: 'Australia' };
+  const addSemiColon = (str) => { if (str) return `${str}\n`; else return ''; };
   let i = 0;
-  let j = 200;
-  let persistedKeys;
-  let id;
-  let httpBody;
+  let j;
   let seed;
   let countryFlag;
-  const len = allKeys.length;
-  while (i < len) {
-    console.log(`Element ${i} through ${j}`);
-    persistedKeys = allKeys.slice(i,j);
-    while (persistedKeys.length > 0) {
-      id = persistedKeys.pop();
+  let len = 1019650;
+  while (len > 0) {
+    len = len - 200;
+    console.log(len);
+    i = 200;
+    while (i > 0) {
+      i = i - 1;
+      console.log(i);
       countryFlag = Math.random() < 0.53;
       seed = countryFlag ? uk : aus;
-      httpBody = JSON.stringify({
+      j = countryFlag ? 44 : 61;
+      const httpPOSTBody = JSON.stringify({
         givenName: chooseRandom(seed.get('givenName')),
         surname:chooseRandom(seed.get('surname')),
         telephoneNumber: chooseRandom(seed.get('telephoneNumber')),
-        streetAddress: chooseRandom(seed.get('streetAddress')),
-        city: chooseRandom(seed.get('city')),
-        state: chooseRandom(seed.get('state')),
-        zipCode: chooseRandom(seed.get('zipCode')),
-        country: countryFlag ? 'UK' : 'AUS',
+        address: `${addSemiColon(chooseRandom(seed.get('streetAddress')))}${addSemiColon(chooseRandom(seed.get('city')))}${addSemiColon(chooseRandom(seed.get('state')))}${addSemiColon(chooseRandom(aus.get('zipCode')))}${countries[j]}`,
+        country: j,
       });
-      fetch(`${chooseRandom(urlList)}/${id}??schema=${firstSchemaVersion}`, {
-        method: 'PUT',
+      fetch(`${chooseRandom(urlList)}?schema=${secondSchemaVersion}`, {
+        method: 'POST',
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
         },
-        body: httpBody,
+        body: httpPOSTBody,
       }).then(getJSONResponse)
         .then(({ ok, message }) => {
           if (ok) {
-            appLogger.info(`Request AOK: ${message}`);
+            appLogger.info(`POST Request AOK: ${message}`);
           } else {
-            appLogger.warn(`Request failed: ${message}`);
+            appLogger.warn(`POST Request failed: ${message}`);
           }
-        }).catch(err => {
-        appLogger.error(`Error: ${err.message}` )
-      });
+        })
+        .catch(err => {
+          appLogger.error(`POST Error: ${err.message}` )
+        });
     }
-    await sleep(1000); // Stops while loop from starting next round before
-    i = j;
-    j = j + 200;
+    await sleep(1000);
   }
 };
 
-main();
+
+main().then();

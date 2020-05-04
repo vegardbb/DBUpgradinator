@@ -1,12 +1,12 @@
 {
   "name": "webappsimulator",
-  "version": "1.1.4",
+  "version": "1.2.1",
   "description": "Generates aggregates and posts them to a hard coded application server",
   "main": "index.js",
   "dependencies": {
-    "winston-daily-rotate-file": "^1.7.2",
-    "winston": "^2.4.0",
-    "isomorphic-fetch": "^2.1.2"
+    "winston-daily-rotate-file": "^4.4.2",
+    "winston": "^3.2.1",
+    "isomorphic-fetch": "^2.6.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
